@@ -1,0 +1,699 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum Visibility {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id             String              @id @default(cuid())
+  email          String              @unique
+  passwordHash   String
+  status         UserStatus          @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  deletedAt      DateTime?
+  profile        UserProfile?
+  sessions       Session[]
+  devices        Device[]
+  enrollments    CourseEnrollment[]
+  quizAttempts   QuizAttempt[]
+  trainerQs      TrainerQuestion[]
+  trainerAnswers TrainerAnswer[]
+  orders         Order[]
+  certificates   Certificate[]
+  notifications  Notification[]
+  supportTickets SupportTicket[]
+}
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  fullName           String
+  phone              String?
+  city               String?
+  country            String?  @default("India")
+  consentAcceptedAt  DateTime?
+  termsAcceptedAt    DateTime?
+  privacyAcceptedAt  DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  userId         String
+  refreshTokenId String   @unique
+  ipAddress      String?
+  userAgent      String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, expiresAt])
+}
+
+model Device {
+  id             String   @id @default(cuid())
+  userId         String
+  fingerprint    String
+  deviceName     String?
+  platform       String?
+  lastIpAddress  String?
+  lastSeenAt     DateTime?
+  trusted        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fingerprint])
+  @@index([userId, lastSeenAt])
+}
+
+model CourseCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  courses     Course[]
+}
+
+model Course {
+  id                String             @id @default(cuid())
+  categoryId        String?
+  title             String
+  slug              String             @unique
+  shortDescription  String?
+  description       String?
+  visibility        Visibility         @default(DRAFT)
+  priceInr          Int
+  listPriceInr      Int?
+  trainerId         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  category          CourseCategory?    @relation(fields: [categoryId], references: [id])
+  sections          CourseSection[]
+  enrollments       CourseEnrollment[]
+  progresses        CourseProgress[]
+  quizzes           Quiz[]
+  liveSessions      LiveSession[]
+  announcements     Announcement[]
+  certificates      Certificate[]
+  practiceLinks     PracticeLink[]
+  orderItems        OrderItem[]
+
+  @@index([categoryId, visibility])
+  @@index([visibility, createdAt])
+}
+
+model CourseSection {
+  id         String   @id @default(cuid())
+  courseId   String
+  title      String
+  sortOrder  Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  course     Course   @relation(fields: [courseId], references: [id])
+  lessons    Lesson[]
+
+  @@unique([courseId, sortOrder])
+}
+
+model Lesson {
+  id               String           @id @default(cuid())
+  courseId         String
+  sectionId        String
+  title            String
+  slug             String
+  sortOrder        Int
+  durationSeconds  Int?
+  visibility       Visibility       @default(DRAFT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+  section          CourseSection    @relation(fields: [sectionId], references: [id])
+  course           Course           @relation(fields: [courseId], references: [id])
+  videos           LessonVideo[]
+  resources        LessonResource[]
+  lessonProgresses LessonProgress[]
+  watchEvents      WatchEvent[]
+  practiceLinks    PracticeLink[]
+
+  @@unique([courseId, slug])
+  @@unique([sectionId, sortOrder])
+}
+
+model LessonVideo {
+  id                String   @id @default(cuid())
+  lessonId           String
+  provider           String
+  providerVideoId    String?
+  providerUrl        String?
+  securePlaybackMode String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  lesson             Lesson   @relation(fields: [lessonId], references: [id])
+
+  @@index([lessonId, provider])
+}
+
+model LessonResource {
+  id          String   @id @default(cuid())
+  lessonId    String
+  title       String
+  resourceUrl String
+  sourceType  String
+  downloadable Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+}
+
+model CourseEnrollment {
+  id             String   @id @default(cuid())
+  userId         String
+  courseId       String
+  enrolledAt     DateTime @default(now())
+  active         Boolean  @default(true)
+  expiresAt      DateTime?
+  orderId        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+  course         Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@index([courseId, enrolledAt])
+}
+
+model CourseProgress {
+  id                String   @id @default(cuid())
+  userId            String
+  courseId          String
+  progressPercent   Float    @default(0)
+  completedLessons  Int      @default(0)
+  totalLessons      Int      @default(0)
+  completedAt       DateTime?
+  lastLessonId      String?
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
+  course            Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  lessonId        String
+  watchedSeconds  Int      @default(0)
+  completed       Boolean  @default(false)
+  lastWatchedAt   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
+  lesson          Lesson   @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId])
+}
+
+model WatchEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  lessonId      String
+  eventType     String
+  watchedSecond Int
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  lesson        Lesson   @relation(fields: [lessonId], references: [id])
+
+  @@index([lessonId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Quiz {
+  id          String         @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  passPercent Float          @default(40)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  course      Course         @relation(fields: [courseId], references: [id])
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+}
+
+model QuizQuestion {
+  id           String       @id @default(cuid())
+  quizId        String
+  questionText  String
+  explanation   String?
+  marks         Float        @default(1)
+  sortOrder     Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  quiz          Quiz         @relation(fields: [quizId], references: [id])
+  options       QuizOption[]
+
+  @@unique([quizId, sortOrder])
+}
+
+model QuizOption {
+  id           String      @id @default(cuid())
+  questionId    String
+  optionText    String
+  isCorrect     Boolean     @default(false)
+  sortOrder     Int
+  question      QuizQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([questionId, sortOrder])
+}
+
+model QuizAttempt {
+  id            String       @id @default(cuid())
+  quizId         String
+  userId         String
+  scorePercent   Float
+  passed         Boolean
+  startedAt      DateTime
+  submittedAt    DateTime
+  createdAt      DateTime     @default(now())
+  quiz           Quiz          @relation(fields: [quizId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+  answers        QuizAnswer[]
+
+  @@index([quizId, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+model QuizAnswer {
+  id             String      @id @default(cuid())
+  attemptId       String
+  questionId      String
+  selectedOptionId String?
+  isCorrect       Boolean
+  marksAwarded    Float       @default(0)
+  attempt         QuizAttempt @relation(fields: [attemptId], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+model LiveSession {
+  id              String               @id @default(cuid())
+  courseId         String
+  title            String
+  startsAt         DateTime
+  endsAt           DateTime
+  meetingProvider  String               @default("google_meet")
+  meetingUrlSecret String
+  joinWindowMins   Int                  @default(15)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  course           Course               @relation(fields: [courseId], references: [id])
+  attendees        LiveSessionAttendee[]
+
+  @@index([courseId, startsAt])
+}
+
+model LiveSessionAttendee {
+  id             String      @id @default(cuid())
+  liveSessionId   String
+  userId          String
+  joinedAt        DateTime?
+  leaveAt         DateTime?
+  ipAddress       String?
+  liveSession     LiveSession @relation(fields: [liveSessionId], references: [id])
+
+  @@unique([liveSessionId, userId])
+}
+
+model TrainerQuestion {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  lessonId    String?
+  title       String
+  body        String
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  answers     TrainerAnswer[]
+
+  @@index([courseId, createdAt])
+}
+
+model TrainerAnswer {
+  id                 String          @id @default(cuid())
+  trainerQuestionId  String
+  answeredByUserId   String
+  body               String
+  createdAt          DateTime        @default(now())
+  question           TrainerQuestion @relation(fields: [trainerQuestionId], references: [id])
+  user               User            @relation(fields: [answeredByUserId], references: [id])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  body        String
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  course      Course   @relation(fields: [courseId], references: [id])
+}
+
+model Coupon {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  discountType     String
+  discountValue    Float
+  maxDiscountInr   Int?
+  scopeType        String   @default("site")
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  usageLimit       Int?
+  perUserLimit     Int?
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  redemptions      CouponRedemption[]
+}
+
+model CouponRedemption {
+  id         String   @id @default(cuid())
+  couponId    String
+  userId      String
+  orderId     String
+  redeemedAt  DateTime @default(now())
+  coupon      Coupon    @relation(fields: [couponId], references: [id])
+
+  @@index([couponId, redeemedAt])
+  @@unique([couponId, userId, orderId])
+}
+
+model Order {
+  id                String                 @id @default(cuid())
+  orderNumber       String                 @unique
+  userId            String
+  subtotalInr       Int
+  discountInr       Int                    @default(0)
+  taxInr            Int                    @default(0)
+  totalInr          Int
+  status            String                 @default("created")
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  user              User                   @relation(fields: [userId], references: [id])
+  items             OrderItem[]
+  payments          Payment[]
+  installmentPlan   InstallmentPlan?
+  refunds           Refund[]
+  invoice           Invoice?
+
+  @@index([userId, createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId      String
+  courseId     String
+  quantity     Int      @default(1)
+  unitPriceInr Int
+  totalPriceInr Int
+  createdAt    DateTime @default(now())
+  order        Order    @relation(fields: [orderId], references: [id])
+  course       Course   @relation(fields: [courseId], references: [id])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String
+  gateway            String
+  gatewayOrderId     String?
+  gatewayPaymentId   String?
+  method             String?
+  amountInr          Int
+  status             PaymentStatus @default(CREATED)
+  capturedAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  order              Order         @relation(fields: [orderId], references: [id])
+  webhooks           PaymentWebhook[]
+
+  @@index([gateway, gatewayPaymentId])
+  @@index([status, createdAt])
+}
+
+model PaymentWebhook {
+  id             String   @id @default(cuid())
+  paymentId      String?
+  provider       String
+  eventId        String?
+  eventType      String
+  signatureValid Boolean
+  payloadJson    Json
+  receivedAt     DateTime @default(now())
+  payment        Payment?  @relation(fields: [paymentId], references: [id])
+
+  @@unique([provider, eventId])
+}
+
+model InstallmentPlan {
+  id          String                @id @default(cuid())
+  orderId      String                @unique
+  totalInr     Int
+  parts        Int
+  status       String                @default("active")
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  order        Order                 @relation(fields: [orderId], references: [id])
+  schedules    InstallmentSchedule[]
+}
+
+model InstallmentSchedule {
+  id                String                   @id @default(cuid())
+  installmentPlanId String
+  installmentNo     Int
+  dueDate           DateTime
+  amountInr         Int
+  status            InstallmentStatus        @default(PENDING)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  installmentPlan   InstallmentPlan          @relation(fields: [installmentPlanId], references: [id])
+  transactions      InstallmentTransaction[]
+
+  @@unique([installmentPlanId, installmentNo])
+  @@index([dueDate, status])
+}
+
+model InstallmentTransaction {
+  id                     String              @id @default(cuid())
+  installmentScheduleId  String
+  paymentId              String?
+  amountInr              Int
+  status                 String
+  processedAt            DateTime?
+  createdAt              DateTime            @default(now())
+  schedule               InstallmentSchedule @relation(fields: [installmentScheduleId], references: [id])
+}
+
+model Refund {
+  id                String   @id @default(cuid())
+  orderId           String
+  paymentId         String?
+  refundReference   String?  @unique
+  amountInr         Int
+  reason            String?
+  status            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  order             Order    @relation(fields: [orderId], references: [id])
+}
+
+model Invoice {
+  id             String   @id @default(cuid())
+  orderId         String   @unique
+  invoiceNumber   String   @unique
+  gstin           String?
+  billingName     String
+  billingAddress  String?
+  invoiceUrl      String?
+  issuedAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  order           Order    @relation(fields: [orderId], references: [id])
+}
+
+model Certificate {
+  id                String   @id @default(cuid())
+  userId            String
+  courseId          String
+  certificateNumber String   @unique
+  issuedAt          DateTime @default(now())
+  certificateUrl    String?
+  user              User     @relation(fields: [userId], references: [id])
+  course            Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  actorUserId    String?
+  actorRole      String?
+  action         String
+  entityType     String
+  entityId       String?
+  beforeState    Json?
+  afterState     Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  channel     String
+  title       String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String
+  subject     String
+  body        String
+  status      String   @default("open")
+  priority    String   @default("normal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  configJson  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PracticeLink {
+  id          String   @id @default(cuid())
+  courseId    String
+  lessonId    String?
+  title       String
+  practiceUrl String
+  provider    String   @default("custom")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  course      Course   @relation(fields: [courseId], references: [id])
+  lesson      Lesson?  @relation(fields: [lessonId], references: [id])
+
+  @@index([courseId, lessonId])
+}
+
+model ContentLeakFlag {
+  id                String   @id @default(cuid())
+  userId            String?
+  courseId          String?
+  lessonId          String?
+  reason            String
+  severity          String
+  signalJson        Json?
+  investigated      Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@index([severity, createdAt])
+}

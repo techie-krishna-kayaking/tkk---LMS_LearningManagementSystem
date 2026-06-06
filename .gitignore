@@ -1,0 +1,25 @@
+# Node
+node_modules/
+**/node_modules/
+dist/
+coverage/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+
+# Prisma
+backend/prisma/dev.db
+
+# Build
+frontend/.vite/
+frontend/dist/
+backend/dist/
