@@ -428,6 +428,44 @@ button.btn-primary {
   gap: 0.85rem;
 }
 
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.auth-tab {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.62rem 0.8rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-tab.active {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+}
+
+.auth-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  padding: 0.8rem;
+}
+
+.otp-hint {
+  margin: 0;
+  border: 1px dashed color-mix(in srgb, var(--brand) 62%, var(--line));
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
 .muted {
   color: var(--muted);
   margin-top: -0.25rem;
@@ -494,6 +532,87 @@ button.btn-primary {
   animation: gradient-slide 2.2s linear infinite;
 }
 
+.udemy-like-layout {
+  align-items: flex-start;
+}
+
+.curriculum-panel {
+  position: sticky;
+  top: 88px;
+}
+
+.curriculum-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.module-block {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.module-title-btn {
+  width: 100%;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  color: var(--ink);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+  cursor: pointer;
+}
+
+.chapter-list {
+  display: grid;
+}
+
+.chapter-item {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  text-align: left;
+  padding: 0.72rem;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.chapter-item p {
+  margin: 0;
+}
+
+.chapter-item small {
+  color: var(--muted);
+}
+
+.chapter-item.active {
+  background: color-mix(in srgb, var(--brand) 13%, transparent);
+}
+
+.chapter-status {
+  align-self: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.chapter-status.done {
+  border-color: color-mix(in srgb, #16a34a 40%, var(--line));
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+}
+
+.chapter-status.pending {
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--line));
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
 @keyframes gradient-slide {
   from {
     background-position: 0 0;
@@ -529,8 +648,16 @@ select {
     flex-wrap: wrap;
   }
 
+  .auth-tabs {
+    grid-template-columns: 1fr;
+  }
+
   .lesson-layout {
     grid-template-columns: 1fr;
+  }
+
+  .curriculum-panel {
+    position: static;
   }
 
   .cta-strip {
