@@ -1,10 +1,22 @@
 import { API_BASE_URL } from './constants';
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('tkk_lms_access_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
       credentials: 'include',
+      headers: {
+        ...getAuthHeaders(),
+      },
     });
   } catch {
     throw new Error(`Cannot reach API at ${API_BASE_URL}`);
@@ -24,6 +36,7 @@ export async function apiPost<T>(path: string, payload: unknown): Promise<T> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
       },
       credentials: 'include',
       body: JSON.stringify(payload),

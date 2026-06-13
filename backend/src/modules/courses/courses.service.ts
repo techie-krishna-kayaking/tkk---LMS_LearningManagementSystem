@@ -1,6 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCourseDto } from './dto/create-course.dto';
 
+export interface ImportedChapter {
+  id: string;
+  title: string;
+  ytLink: string;
+}
+
+export interface ImportedModule {
+  id: string;
+  title: string;
+  chapters: ImportedChapter[];
+}
+
+export interface ImportedCourse {
+  id: string;
+  title: string;
+  slug: string;
+  modules: ImportedModule[];
+}
+
 @Injectable()
 export class CoursesService {
   private readonly demoCourses = [
@@ -60,6 +79,8 @@ export class CoursesService {
     },
   ];
 
+  private importedCurriculum: ImportedCourse[] = [];
+
   listPublic() {
     return this.demoCourses.filter((c) => c.published);
   }
@@ -68,5 +89,131 @@ export class CoursesService {
     const course = { id: `c_${Date.now()}`, ...dto };
     this.demoCourses.push(course as any);
     return course;
+  }
+
+  getImportedCurriculum() {
+    return this.importedCurriculum;
+  }
+
+  importCurriculumCsv(csvText: string) {
+    const lines = csvText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines.length < 2) {
+      return {
+        importedCourses: [],
+        totalRows: 0,
+        message: 'CSV must include a header and at least one data row.',
+      };
+    }
+
+    const header = this.splitCsvLine(lines[0]).map((item) => item.toLowerCase().trim());
+    const required = ['course', 'module', 'chapter', 'yt-link'];
+    const missing = required.filter((key) => !header.includes(key));
+
+    if (missing.length > 0) {
+      return {
+        importedCourses: [],
+        totalRows: 0,
+        message: `Missing required header columns: ${missing.join(', ')}`,
+      };
+    }
+
+    const idx = {
+      course: header.indexOf('course'),
+      module: header.indexOf('module'),
+      chapter: header.indexOf('chapter'),
+      ytLink: header.indexOf('yt-link'),
+    };
+
+    const courseMap = new Map<string, ImportedCourse>();
+    let rowCounter = 0;
+
+    for (const rawLine of lines.slice(1)) {
+      const cols = this.splitCsvLine(rawLine);
+      const courseTitle = (cols[idx.course] || '').trim();
+      const moduleTitle = (cols[idx.module] || '').trim();
+      const chapterTitle = (cols[idx.chapter] || '').trim();
+      const ytLink = (cols[idx.ytLink] || '').trim();
+
+      if (!courseTitle || !moduleTitle || !chapterTitle || !ytLink) {
+        continue;
+      }
+
+      rowCounter += 1;
+
+      const courseKey = courseTitle.toLowerCase();
+      let course = courseMap.get(courseKey);
+      if (!course) {
+        course = {
+          id: `imp_course_${courseMap.size + 1}`,
+          title: courseTitle,
+          slug: this.slugify(courseTitle),
+          modules: [],
+        };
+        courseMap.set(courseKey, course);
+      }
+
+      const moduleKey = moduleTitle.toLowerCase();
+      let module = course.modules.find((item) => item.title.toLowerCase() === moduleKey);
+      if (!module) {
+        module = {
+          id: `imp_module_${course.modules.length + 1}`,
+          title: moduleTitle,
+          chapters: [],
+        };
+        course.modules.push(module);
+      }
+
+      module.chapters.push({
+        id: `imp_chapter_${module.chapters.length + 1}`,
+        title: chapterTitle,
+        ytLink,
+      });
+    }
+
+    this.importedCurriculum = Array.from(courseMap.values());
+
+    return {
+      importedCourses: this.importedCurriculum,
+      totalRows: rowCounter,
+      message: `Imported ${rowCounter} row(s) into ${this.importedCurriculum.length} course(s).`,
+    };
+  }
+
+  private splitCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  private slugify(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
   }
 }

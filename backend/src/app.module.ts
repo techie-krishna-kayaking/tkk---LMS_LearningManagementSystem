@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { RolesGuard } from './common/guards/roles.guard';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
@@ -22,6 +24,12 @@ import { PracticeLinksModule } from './modules/practice-links/practice-links.mod
     AnalyticsModule,
     LiveSessionsModule,
     PracticeLinksModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
 })
 export class AppModule {}

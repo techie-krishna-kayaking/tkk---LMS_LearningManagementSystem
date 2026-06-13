@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AdminRoute } from './components/AdminRoute';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminCourseImportPage } from './pages/admin/AdminCourseImportPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { CatalogPage } from './pages/public/CatalogPage';
 import { HomePage } from './pages/public/HomePage';
@@ -74,9 +76,17 @@ export function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <AdminDashboardPage />
-            </ProtectedRoute>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/content-import"
+          element={
+            <AdminRoute>
+              <AdminCourseImportPage />
+            </AdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -20,8 +20,9 @@ export function Layout(props: PropsWithChildren) {
   const lastMoveRef = useRef(0);
   const user = useMemo(() => {
     const raw = localStorage.getItem('tkk_lms_user');
-    return raw ? (JSON.parse(raw) as { fullName?: string }) : null;
+    return raw ? (JSON.parse(raw) as { fullName?: string; roles?: string[] }) : null;
   }, [token]);
+  const isAdmin = Boolean(user?.roles?.includes('admin'));
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -86,7 +87,8 @@ export function Layout(props: PropsWithChildren) {
           <Link to="/student/dashboard">Student</Link>
           <Link to="/student/profile">Profile</Link>
           <Link to="/student/settings">Settings</Link>
-          <Link to="/admin/dashboard">Admin</Link>
+          {isAdmin && <Link to="/admin/dashboard">Admin</Link>}
+          {isAdmin && <Link to="/admin/content-import">Content Import</Link>}
           {!token && <Link to="/signup">Sign Up</Link>}
           {!token && <Link to="/login">Login</Link>}
           <button

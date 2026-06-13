@@ -8,6 +8,8 @@ import { RegisterDto } from './dto/register.dto';
 const DEMO_EMAIL = 'student@tkklms.demo';
 const DEMO_PASSWORD = 'Demo@12345';
 const DEMO_PHONE = '+919000000000';
+const DEMO_ADMIN_EMAIL = 'admin@tkklms.demo';
+const DEMO_ADMIN_PASSWORD = 'Admin@12345';
 
 interface OtpEntry {
   otp: string;
@@ -35,16 +37,22 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    if (dto.email !== DEMO_EMAIL || dto.password !== DEMO_PASSWORD) {
+    const email = dto.email.toLowerCase();
+    const isStudentLogin = email === DEMO_EMAIL && dto.password === DEMO_PASSWORD;
+    const isAdminLogin = email === DEMO_ADMIN_EMAIL && dto.password === DEMO_ADMIN_PASSWORD;
+
+    if (!isStudentLogin && !isAdminLogin) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const roles = isAdminLogin ? ['admin'] : ['student'];
+
     return this.issueTokens({
-      id: 'demo-user-id',
-      email: DEMO_EMAIL,
-      fullName: 'Demo Student',
+      id: isAdminLogin ? 'demo-admin-id' : 'demo-user-id',
+      email,
+      fullName: isAdminLogin ? 'Demo Admin' : 'Demo Student',
       phone: DEMO_PHONE,
-      roles: ['student'],
+      roles,
     });
   }
 
@@ -106,12 +114,14 @@ export class AuthService {
     }
 
     this.emailOtpStore.delete(key);
+    const roles = this.deriveRoles(email);
+
     return this.issueTokens({
-      id: 'demo-user-id',
+      id: roles.includes('admin') ? 'demo-admin-id' : 'demo-user-id',
       email,
-      fullName: 'Demo Student',
+      fullName: roles.includes('admin') ? 'Demo Admin' : 'Demo Student',
       phone: DEMO_PHONE,
-      roles: ['student'],
+      roles,
     });
   }
 
@@ -122,13 +132,14 @@ export class AuthService {
 
     const email = (input.email || DEMO_EMAIL).toLowerCase();
     const fullName = input.fullName || 'Google Student';
+    const roles = this.deriveRoles(email);
 
     return this.issueTokens({
-      id: 'demo-user-id',
+      id: roles.includes('admin') ? 'demo-admin-id' : 'demo-user-id',
       email,
       fullName,
       phone: DEMO_PHONE,
-      roles: ['student'],
+      roles,
     });
   }
 
@@ -172,8 +183,13 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        roles: user.roles,
       },
     };
+  }
+
+  private deriveRoles(email: string): string[] {
+    return email.toLowerCase() === DEMO_ADMIN_EMAIL ? ['admin'] : ['student'];
   }
 
   private generateOtp(): string {

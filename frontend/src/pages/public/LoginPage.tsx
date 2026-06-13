@@ -9,6 +9,7 @@ interface LoginResponse {
     id: string;
     email: string;
     fullName: string;
+    roles?: string[];
   };
 }
 
@@ -30,6 +31,10 @@ export function LoginPage() {
   function onAuthSuccess(response: LoginResponse) {
     localStorage.setItem('tkk_lms_access_token', response.accessToken);
     localStorage.setItem('tkk_lms_user', JSON.stringify(response.user));
+    if (response.user.roles?.includes('admin')) {
+      navigate('/admin/dashboard');
+      return;
+    }
     navigate('/student/dashboard');
   }
 
